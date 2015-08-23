@@ -7,16 +7,20 @@
 #include <regex>
 #include <sstream>
 #include <vector>
+#include <map>
 #include <thread>
 #include <chrono>
 #include <random>
-
+#include <functional>
+#include <sstream>
+#include <time.h>
 //#include <libxml/parser.h>
 //#include <libxml/tree.h>
 //#include <libxml/HTMLParser.h>
 #include <curl/curl.h>
 
 //#include "xmlutil.h"
+#include "util.h"
 
 using namespace std;
 
@@ -65,30 +69,30 @@ int scrap(string ticker, string outfile)
     curl_easy_cleanup(curl_handle);
     //fclose(headerfile);
     return -1;
-}
+  }
 
   /* we want the headers be written to this file handle */ 
 //curl_easy_setopt(curl_handle, CURLOPT_HEADERDATA, headerfile);
 
   /* we want the body be written to this file handle instead of stdout */ 
-curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, bodyfile);
+  curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, bodyfile);
 
   /* get it! */ 
-curl_easy_perform(curl_handle);
+  curl_easy_perform(curl_handle);
 
   /* close the header file */ 
 //fclose(headerfile);
 
   /* close the body file */ 
-fclose(bodyfile);
+  fclose(bodyfile);
 
   /* cleanup curl stuff */ 
-curl_easy_cleanup(curl_handle);
-return 0;
+  curl_easy_cleanup(curl_handle);
+  return 0;
 }
 
 
-string getEarning(string filename)
+CDate getFinvizEarning(string filename)
 {
     //xmlDoc *doc = NULL;
     //doc = xmlReadFile(file.c_str(), NULL, 0);
@@ -108,35 +112,21 @@ string getEarning(string filename)
   if(!file.good())
   {
     cout << " file is bad " << endl;
-}
+  }
 
-char * data = new char [size];
-file.read(data, size);
-cout << "file read: " << size << endl;
+  char * data = new char [size];
+  file.read(data, size);
+  cout << "file read: " << size << endl;
 
+  
+  //const string endings [] = {"AMC", "BMO"};
 
-const string months [] = {
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec"
-};
-const string endings [] = {"AMC", "BMO"};
+  string s(std::move(data));
 
-string s(std::move(data));
-
-std::regex erdata ("Earnings date");
-std::smatch mdata;
-if(std::regex_search(s, mdata, erdata))
-{
+  std::regex erdata ("Earnings date");
+  std::smatch mdata;
+  if(std::regex_search(s, mdata, erdata))
+  {
     s = mdata.suffix().str();
     string ssm = "(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\s\\d*\\s(AMC|BMO)";
     //cout << ssm << endl;
@@ -144,15 +134,61 @@ if(std::regex_search(s, mdata, erdata))
     std::smatch m;
     if (std::regex_search(s, m, er))
     {
-        for (auto x:m) 
+      for (auto x:m) 
+      {
+        //cout << x << endl;
+        //er = x;
+        stringstream ss;
+        ss << x;
+        string m_str;
+        int d;// d_str;
+        int y;
+        ss >> m_str;
+        ss >> d;
+        time_t now;
+        struct tm* now_yr;
+        time(&now);
+        now_yr =localtime(&now);
+        y = 1900 + now_yr->tm_year;
+
+
+        //int m;
+        std::function<int(string &)> convertMonth = 
+        [](string &m)
         {
-            cout << x << endl;
-            return x;
-        }
+            //date er;
+            const map<string, int> months = {
+            {"Jan", 1},
+            {"Feb", 2},
+            {"Mar", 3},
+            {"Apr", 4},
+            {"May", 5},
+            {"Jun", 6},
+            {"Jul", 7},
+            {"Aug", 8},
+            {"Sep", 9},
+            {"Oct", 10},
+            {"Nov", 11},
+            {"Dec", 12}
+            };
+            for (auto a : months)
+            {
+                if(a.first == m) return a.second;
+            }
+
+            throw string("cannot find match month for " + m);
+            return -1;
+        };
+        int m = convertMonth(m_str);
+        //int d = atoi(d_str.c_str());
+
+
+        return (CDate(y, m, d));
+      }
     }
     else
     {
-        cout << "nothing matches" << endl;
+      cout << "nothing matches" << endl;
     }
     // for (auto mn : months)
     // {
@@ -172,14 +208,15 @@ if(std::regex_search(s, mdata, erdata))
     // }
 
 
-}
-else
-{
+  }
+  else
+  {
     cout << "No matching data for earning" << endl;
-}
+  }
 
   //std::regex month("<b>Apr");
-return "";
+  //CDate c;
+  return CDate();
 
 }
 
@@ -187,76 +224,110 @@ return "";
 vector<string> getTickers(const string filename)
 {
     //char ticker [256];
-    ifstream infile (filename);
-    vector<string> ret;
-    if(infile.good())
+  ifstream infile (filename);
+  vector<string> ret;
+  if(infile.good())
+  {
+    while(infile.eof() == false)
     {
-        while(infile.eof() == false)
-        {
             //infile.getline(ticker, sizeof(ticker)/sizeof(char));
-            string ticker;
-            std::getline(infile, ticker);
-            if(ticker.empty() == false) ret.emplace_back(ticker);
-        }
+      string ticker;
+      std::getline(infile, ticker);
+      if(ticker.empty() == false) ret.emplace_back(ticker);
     }
-    else
-    {
-        throw string (filename + " is no good");
-    }
+  }
+  else
+  {
+    throw string (filename + " is no good");
+  }
 
-    return ret;
+  return ret;
 }
 
 int printHelp(const string program_name)
 {
-  cout << program_name << " -i ticker_list " << 
-      "-d date -w work dir " << endl;//-o output directory <<
-      return 0;  
+    cout << program_name << " -i ticker_list " << 
+      "-d date -w work dir -b basefile " << endl;//-o output directory <<
+    return 0;  
 }
 
-int main(int argc, char** argv)
+enum DIFF_TYPE
 {
-    //parse("body.out"); 
+    ADD = 0,
+    REMOVE = 1,
+    DIFF = 2
 
-    //char file [204800];
-    //getEarning("body.out");
-    string ticker_list = "";
-    string date="";
-    string wdir;
-    int count = argc;
+};
 
-    if(argc == 1)
+map<DIFF_TYPE, string> diffTwoFiles(string file1, string file2)
+{
+    ifstream f1(file1);
+    ifstream f2(file2);
+
+    map<DIFF_TYPE, string> ret;
+
+    if(f1.good() == false) 
     {
-        return printHelp(argv[0]);
+        cout << "file " << file1 << " is bad" << endl;
+        return ret;
     }
 
-    for(int i = 1; i < argc; i++)
+    if(f2.good() == false)
     {
-        string s (argv[i]);
-        if(s == "-i")  
-        {
-            ticker_list.assign(argv[i + 1]);
-        }
-        else if (s == "-d")
-        {
-            date.assign(argv[i + 1]);
-        }
+        cout << "file " << file2 << " is bad" << endl;
+        return ret;
+    }
 
-        else if(s == "-w")
+
+    std::function<void(ifstream &, map<string,string>&)> 
+    loadDatafile= [](ifstream &f1, 
+        map<string, string> & m)
+    {
+        string line;
+        while(f1.eof() == false)
         {
-            wdir.assign(argv[i + 1]);
+          getline(f1, line);
+          size_t pos = line.find(",");
+          if(pos == string::npos) continue;
+          string ticker = line.substr(0, pos);
+          string date = line.substr(pos + 1);
+            //cout << ticker << endl;
+            //cout << date << endl;
+          m.emplace(ticker, date);
+        }
+    };
+    //map<string, string> src;
+    //string line;
+    map<string, string> ref;
+    map<string, string> test;
+    loadDatafile(f1, ref);
+    loadDatafile(f2, test);
+
+    for(auto a : test)
+    {
+        //cout << a.first << ":" << a.second << endl;
+        auto it = ref.find(a.first);
+        if(it != ref.end())
+        {
+            if(it->second != a.second)
+            {
+                CDate refDate();
+                ret.emplace(DIFF, "");
+            }
+                //cout << it->first << ":" << it->second << endl;
         }
     }
 
-    if(date.empty() || ticker_list.empty())
-        return printHelp(argv[0]);
+    //for(auto a : m2)
+    //    cout << a.first << ":" << a.second << endl;
 
-    vector<string> tickers = getTickers(ticker_list);
-    std::sort(tickers.begin(), tickers.end());
-    for(string s : tickers)
-        cout << s << endl;
+    return ret;
+}
 
-    string sumfile (date);
+string dumpER(string wdir, string d, vector<string>&tickers)
+{
+
+    string sumfile (d);
     if(wdir.empty() == false)
     {
         sumfile = wdir + "/" + sumfile;
@@ -269,21 +340,72 @@ int main(int argc, char** argv)
     for(auto s : tickers)
     {
         cout << "getting " << s << endl;
-        string filename = s + "." + date + "." + "raw";
+        string filename = s + "." + d + "." + "raw";
         if(wdir.empty() == false)
         {
-            filename = wdir + "/" + filename;
-        }
-        scrap(s, filename);
-        unsigned int sleeptime = ranGen() % 5001;
-        cout << "sleeping " << sleeptime << endl;
-        this_thread::sleep_for(chrono::milliseconds(sleeptime));               
-        string er = getEarning(filename);
-        sumout <<  s + "," + er << endl;
+          filename = wdir + "/" + filename;
+      }
+      scrap(s, filename);
+      unsigned int sleeptime = ranGen() % 5001;
+      cout << "sleeping " << sleeptime << endl;
+      this_thread::sleep_for(chrono::milliseconds(sleeptime));               
+      CDate er = getFinvizEarning(filename);
+      sumout <<  s + "," + er.toString() << endl;
     }
     sumout.close();
 
+    return sumfile;
+}
 
+int main(int argc, char** argv)
+{
+    //parse("body.out"); 
 
+    //char file [204800];
+    //getFinvizEarning("body.out");
+    string ticker_list = "";
+    string date="";
+    string wdir;
+    string basefile;
+    int count = argc;
+
+    if(argc == 1)
+    {
+        return printHelp(argv[0]);  
+    }
+
+    for(int i = 1; i < argc; i++)
+    {
+        string s (argv[i]);
+        if(s == "-i")  
+        {
+            ticker_list.assign(argv[i + 1]);
+        }
+        else if (s == "-d")
+        {
+          date.assign(argv[i + 1]);
+        }
+        else if(s == "-w")
+        {
+          wdir.assign(argv[i + 1]);
+        }
+        else if(s == "-b")
+        {
+          basefile.assign(argv[i + 1]);
+        }
+    }
+
+    if(date.empty() || ticker_list.empty())
+        return printHelp(argv[0]);
+
+    vector<string> tickers = getTickers(ticker_list);
+    std::sort(tickers.begin(), tickers.end());
+    for(string s : tickers)
+        cout << s << endl;
+
+    //string sumfile = dumpER(wdir, date, tickers);
+    string sumfile = wdir + "/20150816";
+
+    diffTwoFiles(basefile, sumfile);
     return 0;
 }
