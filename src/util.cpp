@@ -13,9 +13,11 @@ CDate::CDate(int y, int m, int d)
     this->d = d;
 }
 
-CVDate::CVDate(const string & s)
+CDate::CDate(const string & s)
 {
-    int y = atoi(s.substr(0, 4).c_str());
-    int m = atoi(s.substr(4, 2).c_str());
-    int d = atoi(s.substr(6, 2).c_str());
+    this->y = atoi(s.substr(0, 4).c_str());
+    this->m = atoi(s.substr(4, 2).c_str());
+    this->d = atoi(s.substr(6, 2).c_str());
+    //using namespace std;
+    //cout << y << m << d << endl;;
 }

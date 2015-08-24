@@ -1,6 +1,7 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <iostream>
 
 #include <ctime>
 #include <functional>
@@ -13,7 +14,7 @@ class CDate
     public:
         CDate(int y, int m, int d);
 
-        CVDate(const string & s);
+        CDate(const string & s);
 
         CDate()
         {
@@ -26,12 +27,15 @@ class CDate
             time_t this_tm = dateToTimeT(this->m, this->d, this->y);
             time_t d_tm = dateToTimeT(d.m, d.d, d.y);
 
-            double sec = difftime(this_tm, d);
+            //std::cout << this->toString() << std::endl;
+
+            double sec = difftime(this_tm, d_tm);
             return sec / (60 * 60 * 24);
         }
 
-        string toString()
+        string toString() const
         {
+            //cout << y << m << d << endl;
             stringstream ss;
             ss << y;
             if(m < 10) ss << "0";

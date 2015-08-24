@@ -259,12 +259,14 @@ enum DIFF_TYPE
 
 };
 
-map<DIFF_TYPE, string> diffTwoFiles(string file1, string file2)
+typedef map<string, pair<DIFF_TYPE, int>> DiffResult;
+
+DiffResult diffTwoFiles(string file1, string file2)
 {
     ifstream f1(file1);
     ifstream f2(file2);
 
-    map<DIFF_TYPE, string> ret;
+    DiffResult ret;
 
     if(f1.good() == false) 
     {
@@ -311,16 +313,23 @@ map<DIFF_TYPE, string> diffTwoFiles(string file1, string file2)
         {
             if(it->second != a.second)
             {
-                CDate refDate();
-                ret.emplace(DIFF, "");
+                CDate refDate(it->second);
+                CDate newDate(a.second);
+                int diff = newDate - refDate;
+                ret.emplace(it->first, make_pair(DIFF, diff));
             }
-                //cout << it->first << ":" << it->second << endl;
+            //cout << it->first << ":" << it->second << endl;
         }
     }
 
     //for(auto a : m2)
     //    cout << a.first << ":" << a.second << endl;
 
+    for(auto it : ret)
+    {
+        //char c = it.second.first == DIFF ? '+' : '-';
+        cout << it.first << ": " << it.second.second << endl;
+    }
     return ret;
 }
 
